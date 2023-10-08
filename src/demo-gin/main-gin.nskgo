@@ -1,0 +1,61 @@
+package rosered11
+
+import (
+	"fmt"
+	"net/http"
+
+	"github.com/gin-gonic/gin"
+
+	"github.com/openzipkin/zipkin-go"
+	zipkinhttp "github.com/openzipkin/zipkin-go/middleware/http"
+	reporterhttp "github.com/openzipkin/zipkin-go/reporter/http"
+)
+
+func main() {
+	reporter := reporterhttp.NewReporter("http://localhost:9411/api/v2/spans")
+	defer reporter.Close()
+
+	endpoint, err := zipkin.NewEndpoint("gin-app", "localhost:8081")
+	if err != nil {
+		fmt.Printf("Error creating Zipkin %v\n", err)
+		return
+	}
+
+	trace, err := zipkin.NewTracer(
+		reporter,
+		zipkin.WithLocalEndpoint(endpoint),
+		zipkin.WithSampler(zipkin.AlwaysSample),
+	)
+	if err != nil {
+		fmt.Printf("Error creating Zipkin tracer: %v\n", err)
+	}
+
+	http.DefaultClient.Transport, err = zipkinhttp.NewTransport(
+		trace,
+		zipkinhttp.TransportTrace(true),
+	)
+	if err != nil {
+		fmt.Printf("%v\n", err)
+	}
+
+	r := gin.Default()
+	customMiddleware := func(c *gin.Context) {
+		zipkinhttp.NewServerMiddleware(trace,
+			zipkinhttp.SpanName("request"))
+
+		c.Next()
+	}
+
+	// var b http.Handler
+	// b =
+
+	// a := gin.WrapH(b.ServeHTTP())
+	r.Use(customMiddleware)
+
+	r.GET("/ping", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{
+			"message": "pong",
+		})
+	})
+	r.Run("0.0.0.0:8081") // listen and serve on 0.0.0.0:8080 (for windows "localhost:8080")
+}
