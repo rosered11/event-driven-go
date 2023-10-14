@@ -97,6 +97,22 @@ Schema body data
 ]
 ```
 
+## Kafka
+
+### Consumer
+
+consume cli
+`kafka-console-consumer.sh --topic zipkin --bootstrap-server localhost:9092 --group zipkin_debug --consumer.config {}`
+
+consumer.config
+`
+
+`
+
+### Describe
+
+Check topic info
+`kafka-topics.sh --bootstrap-server localhost:9092 --describe --topic t1`
 # Reference
 
 - [zipkin-kafka-collector](https://github.com/openzipkin/zipkin/blob/master/zipkin-server/README.md#kafka-collector)

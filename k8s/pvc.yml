@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: zookeeper-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi # Request the same storage capacity as the PV
+  storageClassName: z-local-storage # Match the StorageClass name
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: kafka-0-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi # Request the same storage capacity as the PV
+  storageClassName: k-local-storage # Match the StorageClass name
