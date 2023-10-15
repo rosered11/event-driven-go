@@ -3,17 +3,61 @@ package main
 import (
 	"fmt"
 	"log"
+	"strconv"
 	"time"
 
 	"github.com/IBM/sarama"
 	"github.com/openzipkin/zipkin-go"
+	"github.com/openzipkin/zipkin-go/model"
 	"github.com/openzipkin/zipkin-go/reporter/kafka"
 )
 
 func main() {
+	var traceId, spanId string
+	for i := 0; i < 1; i++ {
+		traceId, spanId = sendLog()
+		time.Sleep(time.Second)
+	}
+	consumerLog(traceId, spanId)
+	fmt.Println("Tracing completed.")
+}
+
+func consumerLog(traceId, spanId string) {
+	kafkaBrokers := []string{"localhost:30881", "localhost:30882"} // Update with your Kafka brokers
+	kafkaTopic := "zipkin"                                         // The Kafka topic to send traces to
+	kafkaReporter, err := kafka.NewReporter(
+		kafkaBrokers,
+		kafka.Topic(kafkaTopic),
+	)
+	if err != nil {
+		log.Fatalf("Failed to create Kafka reporter: %v", err)
+	}
+	defer kafkaReporter.Close()
+
+	traceID, _ := model.TraceIDFromHex(traceId)
+	result, _ := strconv.ParseUint(spanId, 16, 64)
+	spanID := model.ID(result)
+	endpoint, _ := zipkin.NewEndpoint("consumption-service", "80")
+	tracer, _ := zipkin.NewTracer(
+		kafkaReporter,
+		zipkin.WithLocalEndpoint(endpoint),
+		zipkin.WithSampler(zipkin.AlwaysSample),
+	)
+	// span := tracer.StartSpan("message-consumption")
+	span := tracer.StartSpan("message-consumption", zipkin.Parent(model.SpanContext{
+		TraceID: traceID,
+		ID:      spanID,
+	}))
+	defer span.Finish()
+
+	time.Sleep(50 * time.Millisecond)
+
+}
+
+func sendLog() (tracId, spanId string) {
 	// Configure Zipkin Kafka reporter
-	kafkaBrokers := []string{"localhost:9092"} // Update with your Kafka brokers
-	kafkaTopic := "zipkin"                     // The Kafka topic to send traces to
+	kafkaBrokers := []string{"localhost:30881", "localhost:30882"} // Update with your Kafka brokers
+	kafkaTopic := "zipkin"                                         // The Kafka topic to send traces to
 
 	producerConfig := sarama.NewConfig()
 	producerConfig.Producer.RequiredAcks = sarama.WaitForLocal
@@ -38,17 +82,16 @@ func main() {
 		zipkin.WithLocalEndpoint(endpoint),
 		zipkin.WithSampler(zipkin.AlwaysSample),
 	)
+
 	if err != nil {
 		log.Fatalf("Failed to create Zipkin tracer: %v", err)
 	}
-	tracerKafka, err := zipkin.NewTracer(
+	tracerKafka, _ := zipkin.NewTracer(
 		kafkaReporter,
 		zipkin.WithLocalEndpoint(kafka),
 		zipkin.WithSampler(zipkin.AlwaysSample),
 	)
-	if err != nil {
-		log.Fatalf("Failed to create Zipkin tracer: %v", err)
-	}
+
 	tracerRedis, err := zipkin.NewTracer(
 		kafkaReporter,
 		zipkin.WithLocalEndpoint(redis),
@@ -66,6 +109,23 @@ func main() {
 	// Add tags and annotations to the span if needed
 	span.Tag("custom-tag", "tag-value")
 	span.Annotate(time.Now(), "custom-annotation")
+
+	producerService, _ := zipkin.NewEndpoint("producer-service", "0.0.0.0")
+	tracerProducer, err := zipkin.NewTracer(
+		kafkaReporter,
+		zipkin.WithLocalEndpoint(producerService),
+		zipkin.WithSampler(zipkin.AlwaysSample),
+	)
+	if err != nil {
+		log.Fatalf("Failed to create Zipkin tracer: %v", err)
+	}
+	ctx := tracerProducer.StartSpan("ProduceMessage")
+	time.Sleep(50 * time.Millisecond)
+	ctx.Annotate(time.Now(), "ms")
+	kafkaChild := tracer.StartSpan("kafka-child", zipkin.Parent(ctx.Context()))
+	time.Sleep(50 * time.Millisecond)
+	kafkaChild.Finish()
+	ctx.Finish()
 
 	childSpan := tracer.StartSpan("child-operation", zipkin.Parent(span.Context()))
 	defer childSpan.Finish()
@@ -110,38 +170,7 @@ func main() {
 			fmt.Println("received", msg2)
 		}
 	}
-
-	// Simulate some work
-	// time.Sleep(200 * time.Millisecond)
-	// endpoint1, _ := zipkin.NewEndpoint("myservice1-service", "myservice1:8081")
-	// tracer1, err := zipkin.NewTracer(
-	// 	kafkaReporter,
-	// 	zipkin.WithLocalEndpoint(endpoint1),
-	// 	zipkin.WithSampler(zipkin.AlwaysSample),
-	// )
-	// if err != nil {
-	// 	log.Fatalf("Failed to create Zipkin tracer: %v", err)
-	// }
-	// endpoint2, _ := zipkin.NewEndpoint("myservice2-service", "myservice2:9990")
-	// tracer2, err := zipkin.NewTracer(
-	// 	kafkaReporter,
-	// 	zipkin.WithLocalEndpoint(endpoint2),
-	// 	zipkin.WithSampler(zipkin.AlwaysSample),
-	// )
-	// if err != nil {
-	// 	log.Fatalf("Failed to create Zipkin tracer: %v", err)
-	// }
-
-	// // Create spans using each tracer
-	// span1 := tracer1.StartSpan("operation-1")
-	// span2 := tracer2.StartSpan("operation-2")
-
-	// Simulate work in each span
-	// time.Sleep(50 * time.Millisecond)
-
-	// // Finish the spans
-	// span1.Finish()
-	// span2.Finish()
-
-	fmt.Println("Tracing completed.")
+	tracId = childSpan.Context().TraceID.String()
+	spanId = childSpan.Context().ID.String()
+	return tracId, spanId
 }

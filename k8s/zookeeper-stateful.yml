@@ -10,7 +10,7 @@ spec:
   persistentVolumeReclaimPolicy: Retain
   storageClassName: z-local-storage # Name of the StorageClass
   hostPath:
-    path: /Users/rosered/Documents/workspace/event-driven-go/k8s/vol/persistent-volumn # The path to the directory on the host where the data should be stored
+    path: /Users/rosered/Documents/workspace/event-driven-go/k8s/vol/persistent-zookeeper # The path to the directory on the host where the data should be stored
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim

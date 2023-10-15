@@ -109,6 +109,11 @@ consumer.config
 
 `
 
+## K8S
+
+Convert file to secret
+`kubectl create secret generic my-secret --from-file=mysecretfile.txt=mysecretfile.txt`
+
 ### Describe
 
 Check topic info

@@ -35,6 +35,10 @@ spec:
   - name: internal
     port: 29092
     targetPort: 29092
+  - name: jmx
+    port: 7072
+    targetPort: 7072
+    nodePort: 30872
   - name: client
     port: 30881
     targetPort: 30881
@@ -59,6 +63,7 @@ spec:
       containers:
       - name: kafka
         image: confluentinc/cp-kafka
+        imagePullPolicy: IfNotPresent
         securityContext:
           runAsUser: 0 
         resources:
@@ -68,6 +73,7 @@ spec:
         ports:
         - containerPort: 30881
         - containerPort: 29092
+        - containerPort: 7072
         env:
         - name: KAFKA_BROKER_ID
           value: "10"
@@ -88,11 +94,24 @@ spec:
           value: "1"
         - name: KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR
           value: "1"
+
+        - name: KAFKA_OPTS
+          value: "-javaagent:/usr/share/jmx_exporter/jar/jmx_prometheus_javaagent-0.19.0.jar=7072:/usr/share/jmx_exporter/kafka-broker.yml"
         resources: {}
         volumeMounts:
           - mountPath: /var/lib/kafka/data
             name: kafka-data
+          - name: kafka-jmx
+            mountPath: /usr/share/jmx_exporter
+          - name: javaagent
+            mountPath: /usr/share/jmx_exporter/jar
       volumes:
         - name: kafka-data
           persistentVolumeClaim:
             claimName: kafka-host-pvc
+        - name: kafka-jmx
+          secret:
+            secretName: kafka-jmx-file
+        - name: javaagent
+          secret:
+            secretName: javaagent-file
