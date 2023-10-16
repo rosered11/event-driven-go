@@ -1,0 +1,78 @@
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: prometheus-pv
+spec:
+  capacity:
+    storage: 1Gi # Adjust the storage capacity as needed
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: prometheus-storage # Name of the StorageClass
+  hostPath:
+    path: /Users/rosered/Documents/workspace/event-driven-go/k8s/vol/persistent-prometheus # The path to the directory on the host where the data should be stored
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: prometheus-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi # Request the same storage capacity as the PV
+  storageClassName: prometheus-storage # Match the StorageClass name
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: prometheus-cluster
+spec:
+  selector:
+    app: prometheus-cluster
+  ports:
+  - name: internal
+    port: 9090
+    targetPort: 9090
+  - name: client
+    port: 30892
+    targetPort: 9090
+    nodePort: 30892
+  type: NodePort
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: prometheus
+spec:
+  serviceName: "prometheus-cluster"
+  selector:
+    matchLabels:
+      app: prometheus-cluster
+  template:
+    metadata:
+      labels:
+        app: prometheus-cluster
+    spec:
+      containers:
+      - name: prometheus
+        image: prom/prometheus
+        ports:
+        - containerPort: 9090
+        args: 
+          - "--config.file=/run/secrets/prometheus.yml"
+          - "--storage.tsdb.path=/prometheus"
+          - "--storage.tsdb.retention=168h"
+        volumeMounts:
+          - name: prometheus-file
+            mountPath: /run/secrets
+          - mountPath: /prometheus
+            name: prometheus-data
+      volumes:
+        - name: prometheus-data
+          persistentVolumeClaim:
+            claimName: prometheus-pvc
+        - name: prometheus-file
+          secret:
+            secretName: prometheus-secret-file

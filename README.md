@@ -123,3 +123,5 @@ Check topic info
 - [zipkin-kafka-collector](https://github.com/openzipkin/zipkin/blob/master/zipkin-server/README.md#kafka-collector)
 
 - [go-zipkin](https://medium.com/oracledevs/setup-a-distributed-tracing-infrastructure-with-zipkin-kafka-and-cassandra-d0a68fb3eee6)
+
+- [jmx-exporter](https://github.com/prometheus/jmx_exporter/tree/main)

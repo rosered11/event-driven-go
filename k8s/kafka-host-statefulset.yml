@@ -78,11 +78,11 @@ spec:
         - name: KAFKA_BROKER_ID
           value: "10"
         - name: KAFKA_LISTENERS
-          value: "LISTENER_CONTAINER://0.0.0.0:29092,LISTENER_EXTERNAL://0.0.0.0:30881"
+          value: "LISTENER_CONTAINER://:29092,LISTENER_EXTERNAL://:30881"
         - name: KAFKA_ZOOKEEPER_CONNECT
           value: "crs-zookeeper-0.zookeeper-cluster.default.svc.cluster.local:2181"
-        - name: ES_JAVA_OPTS
-          value: "ES_JAVA_OPTS=-Xms256m -Xmx256m -XX:+ExitOnOutOfMemoryError"
+        - name: KAFKA_HEAP_OPTS
+          value: "-Xms512M -Xmx512M -XX:+ExitOnOutOfMemoryError"
         - name: KAFKA_ADVERTISED_LISTENERS
           value: "LISTENER_CONTAINER://kafka-host-cluster:29092,LISTENER_EXTERNAL://localhost:30881"
         - name: KAFKA_LISTENER_SECURITY_PROTOCOL_MAP
@@ -94,6 +94,11 @@ spec:
           value: "1"
         - name: KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR
           value: "1"
+
+        # - name: KAFKA_KRAFT_MODE
+        #   value: "true"
+        # - name: KAFKA_AUTO_CREATE_TOPICS_ENABLE
+        #   value: "false"
 
         - name: KAFKA_OPTS
           value: "-javaagent:/usr/share/jmx_exporter/jar/jmx_prometheus_javaagent-0.19.0.jar=7072:/usr/share/jmx_exporter/kafka-broker.yml"

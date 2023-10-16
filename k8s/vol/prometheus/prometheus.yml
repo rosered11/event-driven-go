@@ -1,8 +1,18 @@
+global:
+  scrape_interval:     5s
+  evaluation_interval: 5s
+rule_files:
+  - "alert.rules_nodes"
+  - "alert.rules_tasks"
+  - "alert.rules_service-groups"
 scrape_configs:
   - job_name: 'kafka'
     static_configs:
     - targets:
-      - 'localhost:30872'
-      - 'localhost:30873'
+      - 'kafka-host-cluster:7072'
+      - 'kafka-0-cluster:7072'
       labels:
         env: 'dev'
+  - job_name: "zookeeper-server"
+    static_configs:
+    - targets: ["zookeeper-cluster:7072"]

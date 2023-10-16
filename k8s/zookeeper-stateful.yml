@@ -1,28 +1,54 @@
 apiVersion: v1
 kind: PersistentVolume
 metadata:
-  name: z-pv
+  name: z-data-pv
 spec:
   capacity:
     storage: 1Gi # Adjust the storage capacity as needed
   accessModes:
     - ReadWriteOnce
   persistentVolumeReclaimPolicy: Retain
-  storageClassName: z-local-storage # Name of the StorageClass
+  storageClassName: z-data-local-storage # Name of the StorageClass
   hostPath:
-    path: /Users/rosered/Documents/workspace/event-driven-go/k8s/vol/persistent-zookeeper # The path to the directory on the host where the data should be stored
+    path: /Users/rosered/Documents/workspace/event-driven-go/k8s/vol/persistent-zookeeper/data # The path to the directory on the host where the data should be stored
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: zookeeper-pvc
+  name: zookeeper-data-pvc
 spec:
   accessModes:
     - ReadWriteOnce
   resources:
     requests:
       storage: 1Gi # Request the same storage capacity as the PV
-  storageClassName: z-local-storage # Match the StorageClass name
+  storageClassName: z-data-local-storage # Match the StorageClass name
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: z-log-pv
+spec:
+  capacity:
+    storage: 1Gi # Adjust the storage capacity as needed
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: z-log-local-storage # Name of the StorageClass
+  hostPath:
+    path: /Users/rosered/Documents/workspace/event-driven-go/k8s/vol/persistent-zookeeper/log # The path to the directory on the host where the data should be stored
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: zookeeper-log-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi # Request the same storage capacity as the PV
+  storageClassName: z-log-local-storage # Match the StorageClass name
 ---
 apiVersion: apps/v1
 kind: StatefulSet
@@ -68,13 +94,31 @@ spec:
           value: "ES_JAVA_OPTS=-Xms256m -Xmx256m -XX:+ExitOnOutOfMemoryError"
         - name: ZOO_SERVERS
           value: crs-zookeeper-0.zookeeper-cluster.default.svc.cluster.local:2888:3888
+        - name: KAFKA_OPTS
+          value: "-javaagent:/usr/share/jmx_exporter/jar/jmx_prometheus_javaagent-0.19.0.jar=7072:/usr/share/jmx_exporter/zookeeper.yml"
         volumeMounts:
         - name: zookeeper-data
-          mountPath: /var/lib/zookeeper
+          mountPath: /var/lib/zookeeper/data
+          # subPath: data
+        - name: zookeeper-log
+          mountPath: /var/lib/zookeeper/log
+        - name: zookeeper-jmx
+          mountPath: /usr/share/jmx_exporter
+        - name: javaagent
+          mountPath: /usr/share/jmx_exporter/jar
       volumes:
         - name: zookeeper-data
           persistentVolumeClaim:
-            claimName: zookeeper-pvc
+            claimName: zookeeper-data-pvc
+        - name: zookeeper-log
+          persistentVolumeClaim:
+            claimName: zookeeper-log-pvc
+        - name: zookeeper-jmx
+          secret:
+            secretName: zookeeper-jmx-file
+        - name: javaagent
+          secret:
+            secretName: javaagent-file
 ---
 apiVersion: v1
 kind: Service
