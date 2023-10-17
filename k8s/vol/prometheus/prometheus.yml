@@ -9,10 +9,7 @@ scrape_configs:
   - job_name: 'kafka'
     static_configs:
     - targets:
-      - 'kafka-host-cluster:7072'
-      - 'kafka-0-cluster:7072'
+      - 'kafka-broker-0:7072'
+      - 'kafka-broker-1:7072'
       labels:
         env: 'dev'
-  - job_name: "zookeeper-server"
-    static_configs:
-    - targets: ["zookeeper-cluster:7072"]

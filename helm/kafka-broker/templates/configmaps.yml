@@ -1,0 +1,24 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "kafka-broker.fullname" . }}
+  labels:
+    {{- include "kafka-broker.labels" . | nindent 4 }}
+  namespace: {{ .Values.namespace }}
+data:
+  KAFKA_NODE_ID: "{{ .Values.kafka.nodeId }}"
+  KAFKA_LISTENERS: "{{ printf "CONTROLLER://:%s,LISTENER_CONTAINER://:%s,LISTENER_EXTERNAL://:%s" .Values.kafka.controllerPort .Values.kafka.internalPort .Values.kafka.externalPort }}"
+  KAFKA_CONTROLLER_LISTENER_NAMES: "CONTROLLER"
+  KAFKA_HEAP_OPTS: "{{ .Values.kafka.memory }}"
+  KAFKA_ADVERTISED_LISTENERS: "{{ printf "LISTENER_CONTAINER://%s:%s,LISTENER_EXTERNAL://%s" .Values.fullnameOverride .Values.kafka.internalPort .Values.kafka.externalUrl }}"
+  KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: "CONTROLLER:PLAINTEXT,LISTENER_CONTAINER:PLAINTEXT,LISTENER_EXTERNAL:PLAINTEXT"
+  KAFKA_INTER_BROKER_LISTENER_NAME: "LISTENER_CONTAINER"
+  KAFKA_CONTROLLER_QUORUM_VOTERS: "{{ .Values.kafka.quarumVoters }}"
+  KAFKA_PROCESS_ROLES: "broker,controller"
+  KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: "0"
+  KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: "1"
+  KAFKA_LOG_DIRS: "/tmp/kraft-combined-logs"
+  CLUSTER_ID: "{{ .Values.kafka.cursterId }}"
+  KAFKA_DEFAULT_REPLICATION_FACTOR: "1"
+  KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: "1"
+  KAFKA_OPTS: "-javaagent:/usr/share/jmx_exporter/jar/jmx_prometheus_javaagent-0.19.0.jar=7072:/usr/share/jmx_exporter/kafka-broker.yml"

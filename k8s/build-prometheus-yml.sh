@@ -1,0 +1,1 @@
+kubectl create secret generic prometheus-secret-file --from-file=./vol/prometheus/prometheus.yml

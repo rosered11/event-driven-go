@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: {{ include "kafka-broker.fullname" . }}
+  labels:
+    {{- include "kafka-broker.labels" . | nindent 4 }}
+spec:
+  capacity:
+    storage: {{ .Values.pv.storage }} # Adjust the storage capacity as needed
+  accessModes:
+    - {{ .Values.pv.accessMode }}
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: {{ printf "%s-class-storage" (include "kafka-broker.fullname" .) }} # Name of the StorageClass
+  hostPath:
+    path: {{ printf "/Users/rosered/Documents/workspace/event-driven-go/k8s/vol/persistent-%s-volumn" .Values.fullnameOverride }} # The path to the directory on the host where the data should be stored
