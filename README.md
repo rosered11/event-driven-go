@@ -5,7 +5,7 @@
 Check status elasticsearch
 
 `
-curl http://localhost:9200 -u elastic:MyPw123"=
+curl http://localhost:9200 -u elastic:MyPw123
 `
 
 Genrate token for Kibana
@@ -109,6 +109,13 @@ consumer.config
 
 `
 
+## Grafana
+
+### Dashboard
+
+- [D1](https://grafana.com/grafana/dashboards/18276-kafka-dashboard/)
+- [D2](https://grafana.com/grafana/dashboards/721-kafka/)
+
 ## K8S
 
 Convert file to secret
@@ -118,6 +125,46 @@ Convert file to secret
 
 Check topic info
 `kafka-topics.sh --bootstrap-server localhost:9092 --describe --topic t1`
+
+## Resource
+
+### Kafka
+
+```
+- brokers 3
+- ram 2 gi
+- cpu 500m
+```
+
+### Prometheus
+
+Prometheus stores an average of only 1-2 bytes per sample. Thus, to plan the capacity of a Prometheus server, you can use the rough formula:
+
+`needed_disk_space = retention_time_seconds * ingested_samples_per_second * bytes_per_sample`
+
+- keep data 7 day
+  7 day = 604800 seconds
+- kafka-broker(sample 3)
+- scrape_interval 5 seconds
+
+disk = 604800 * (5 * 3) * 2 = 18144000 bytes = 18.144 MB
+
+```
+- brokers 1
+- ram 512 Mi
+- cpu 500m
+```
+
+Note Dev:
+Storage 4 Gi
+- kafka storage - 2
+- prometheus - 1
+- Grafana - 1
+- Logstash - 1
+- Elasticsearch - 1
+- Kibana - 1
+- Zipkin - 1
+
 # Reference
 
 - [zipkin-kafka-collector](https://github.com/openzipkin/zipkin/blob/master/zipkin-server/README.md#kafka-collector)

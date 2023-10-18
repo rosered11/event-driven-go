@@ -71,11 +71,11 @@ spec:
           runAsUser: 0 
         resources:
           requests:
-            memory: "16Mi"
-            cpu: "0"
+            memory: "512Mi"
+            cpu: "0.5"
           limits:
-            memory: 16Mi
-            cpu: "0"
+            memory: 512Mi
+            cpu: "0.5"
         ports:
         - containerPort: 30881
         - containerPort: 29092
@@ -108,7 +108,7 @@ spec:
         - name: KAFKA_INTER_BROKER_LISTENER_NAME
           value: LISTENER_CONTAINER
         - name: KAFKA_CONTROLLER_QUORUM_VOTERS
-          value: "10@kafka-host-cluster:29093,0@kafka-0-cluster:29093"
+          value: "10@kafka-host-cluster:29093"
         - name: KAFKA_PROCESS_ROLES
           value: "broker,controller"
         - name: KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS

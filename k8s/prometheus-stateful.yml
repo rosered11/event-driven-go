@@ -57,13 +57,13 @@ spec:
     spec:
       containers:
       - name: prometheus
-        image: prom/prometheus
+        image: prom/prometheus:v2.47.2
         ports:
         - containerPort: 9090
         args: 
           - "--config.file=/run/secrets/prometheus.yml"
           - "--storage.tsdb.path=/prometheus"
-          - "--storage.tsdb.retention=168h"
+          - "--storage.tsdb.retention.time=168h"
         volumeMounts:
           - name: prometheus-file
             mountPath: /run/secrets

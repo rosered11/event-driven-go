@@ -1,0 +1,62 @@
+version: '3.4'
+services:
+  # Maybe not use
+  kafka_exporter:
+      network_mode: "host"
+      image: danielqsj/kafka-exporter
+      command: --kafka.server=localhost:30881 --kafka.server=localhost:30882
+      ports:
+        - "9308:9308"
+      deploy:
+        # mode: replicated
+        resources:
+          limits:
+            memory: 128M
+          reservations:
+            memory: 64M      
+        # replicas: 1
+        # endpoint_mode: vip
+  prometheus:
+      # network_mode: "host"
+      image: prom/prometheus
+      ports:
+        - "9090:9090"
+      volumes:
+        - ./vol/persistent-prometheus:/prometheus
+      secrets:
+        - prometheus.yml
+      command: --config.file=/run/secrets/prometheus.yml --storage.tsdb.path=/prometheus --storage.tsdb.retention=168h
+      deploy:
+        resources:
+          limits:
+            cpus: '1'
+            memory: 1024M
+          reservations:
+            memory: 512M
+            # replicas: 1
+            # endpoint_mode: vip
+            # placement:
+            #   constraints:
+            #     - "node.labels.prometheus == true"
+  grafana:
+      # network_mode: "host"
+      image: grafana/grafana
+      ports:
+        - "3000:3000"
+      volumes:
+        - ./vol/persistent-grafana:/var/lib/grafana
+      deploy:
+        # mode: replicated
+        resources:
+          limits:
+            memory: 512M
+          reservations:
+            memory: 128M
+        # replicas: 1
+        # endpoint_mode: vip
+        # placement:
+        #   constraints:
+        #     - "node.labels.grafana == true"
+secrets:
+  prometheus.yml:
+    file: ./vol/prometheus/prometheus.yml

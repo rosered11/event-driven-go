@@ -1,18 +1,22 @@
 global:
   scrape_interval:     5s
   evaluation_interval: 5s
-rule_files:
-  - "alert.rules_nodes"
-  - "alert.rules_tasks"
-  - "alert.rules_service-groups"
+
+# rule_files:
+#   - "alert.rules_nodes"
+#   - "alert.rules_tasks"
+#   - "alert.rules_service-groups"
+
 scrape_configs:
   - job_name: 'kafka'
     static_configs:
     - targets:
-      - 'kafka-broker-0:7072'
       - 'kafka-broker-1:7072'
+      - 'kafka-broker-2:7072'
       labels:
-        env: 'dev'
+        env: 'sit'
   - job_name: 'prometheus'
     static_configs:
-      - targets: ['localhost:9090']
+    - targets: ['localhost:9090']
+      labels:
+        env: 'sit'

@@ -57,7 +57,7 @@ spec:
     spec:
       containers:
       - name: grafana
-        image: grafana/grafana
+        image: grafana/grafana:10.1.5
         ports:
         - containerPort: 3000
         volumeMounts:

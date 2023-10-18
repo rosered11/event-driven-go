@@ -38,7 +38,8 @@ podLabels: {}
 podSecurityContext: {}
   # fsGroup: 2000
 
-securityContext: {}
+securityContext:
+  runAsUser: 0
   # capabilities:
   #   drop:
   #   - ALL
@@ -101,7 +102,7 @@ volumes:
 # Additional volumeMounts on the output Deployment definition.
 volumeMounts:
   - name: kafka-data
-    mountPath: /var/lib/kafka/data
+    mountPath: /tmp/kraft-combined-logs
   - name: kafka-jmx
     mountPath: /usr/share/jmx_exporter
   - name: javaagent

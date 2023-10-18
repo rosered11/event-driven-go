@@ -1,62 +1,92 @@
-version: '3.4'
+version: '3.8'
+# networks:
+#   inventory-management_default:
+#     external: true
 services:
-  # Maybe not use
-  kafka_exporter:
-      network_mode: "host"
-      image: danielqsj/kafka-exporter
-      command: --kafka.server=localhost:30881 --kafka.server=localhost:30882
-      ports:
-        - "9308:9308"
-      deploy:
-        # mode: replicated
-        resources:
-          limits:
-            memory: 128M
-          reservations:
-            memory: 64M      
-        # replicas: 1
-        # endpoint_mode: vip
-  prometheus:
-      # network_mode: "host"
-      image: prom/prometheus
-      ports:
-        - "9090:9090"
-      volumes:
-        - ./vol/persistent-prometheus:/prometheus
-      secrets:
-        - prometheus.yml
-      command: --config.file=/run/secrets/prometheus.yml --storage.tsdb.path=/prometheus --storage.tsdb.retention=168h
-      deploy:
-        resources:
-          limits:
-            cpus: '1'
-            memory: 1024M
-          reservations:
-            memory: 512M
-            # replicas: 1
-            # endpoint_mode: vip
-            # placement:
-            #   constraints:
-            #     - "node.labels.prometheus == true"
-  grafana:
-      # network_mode: "host"
-      image: grafana/grafana
-      ports:
-        - "3000:3000"
-      volumes:
-        - ./vol/persistent-grafana:/var/lib/grafana
-      deploy:
-        # mode: replicated
-        resources:
-          limits:
-            memory: 512M
-          reservations:
-            memory: 128M
-        # replicas: 1
-        # endpoint_mode: vip
-        # placement:
-        #   constraints:
-        #     - "node.labels.grafana == true"
-secrets:
-  prometheus.yml:
-    file: ./vol/prometheus/prometheus.yml
+  # zookeeper:
+  #   image: confluentinc/cp-zookeeper
+  #   ports:
+  #     - 2181:2181
+  #     - 2888:2888
+  #     - 3888:3888
+  #   environment:
+  #     - ZOOKEEPER_CLIENT_PORT=2181
+  # kafka:
+  #   image: confluentinc/cp-kafka
+  #   depends_on:
+  #     - zookeeper
+  #   ports:
+  #     - "9092:9092"
+  #   environment:
+  #     - KAFKA_ZOOKEEPER_CONNECT=zookeeper:2181
+  #     - KAFKA_ADVERTISED_LISTENERS=LISTENER_CONTAINER://kafka:29092,LISTENER_HOST://localhost:9092
+  #     - KAFKA_LISTENER_SECURITY_PROTOCOL_MAP=LISTENER_CONTAINER:PLAINTEXT,LISTENER_HOST:PLAINTEXT
+  #     - KAFKA_INTER_BROKER_LISTENER_NAME=LISTENER_CONTAINER
+  #     - KAFKA_LISTENERS=LISTENER_CONTAINER://kafka:29092,LISTENER_HOST://kafka:9092
+  #     - KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR=1
+  # kafka_ui:
+  #   image: provectuslabs/kafka-ui:latest
+  #   depends_on:
+  #     - kafka
+  #   ports:
+  #     - "8080:8080"
+  #   environment:
+  #     - KAFKA_CLUSTERS_0_NAME=local
+  #     - KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS=kafka:29092
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.10.2-arm64
+    restart: always
+    ports:
+      - 5601:5601
+    depends_on:
+      - elasticsearch
+    volumes:
+      - "./vol/kibana/config:/usr/share/kibana/config"
+    environment:
+      - ELASTICSEARCH_SERVICEACCOUNTTOKEN=AAEAAWVsYXN0aWMva2liYW5hL3Rva2VuMTpwdzVWVUE1RlE3LXpfM2hqbXp3OTlR
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.10.2-arm64
+    environment:
+      - xpack.security.enabled=true
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m -XX:+ExitOnOutOfMemoryError"
+      - discovery.type=single-node
+      # - ELASTIC_USERNAME=kibana_system
+      - ELASTIC_PASSWORD=MyPw123
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    mem_limit: 1g
+    ports:
+      - 9200:9200
+    volumes:
+      - "./vol/elasticsearch/data:/usr/share/elasticsearch/data"
+    #   - "~/Documents/workspace/event-driven-go/k8s/vol/elasticsearch:/usr/share/elasticsearch"
+  logstash:
+    image: docker.elastic.co/logstash/logstash:8.10.2-arm64
+    restart: always
+    command: logstash -f /config-dir/logstash.conf
+    ports:
+      - 9600:9600
+      - 7777:7777
+    depends_on:
+      - elasticsearch
+    volumes:
+      - "./vol/logstash/pipeline:/config-dir"
+      - "./vol/logstash/config/logstash.yml:/usr/share/logstash/config/logstash.yml"
+    #   - "~/Documents/workspace/event-driven-go/k8s/vol/logstash/config/logstash.yml:/usr/share/logstash/config/logstash.yml"
+  zipkin:
+    image: openzipkin/zipkin:2-arm64
+    ports:
+      - 9411:9411
+    environment:
+      # - STORAGE_TYPE=elasticsearch
+      # - ES_HOSTS=elasticsearch:9200
+      # - ES_USERNAME=mylog_logstash
+      # - ES_PASSWORD=MyPw123
+      - "JAVA_OPTS=-Xms512m -Xmx512m -XX:+ExitOnOutOfMemoryError -Dlogging.level.zipkin=DEBUG -Dlogging.level.zipkin2=DEBUG"
+      # - SELF_TRACING_ENABLED=true
+      # - QUERY_LOG_LEVEL=DEBUG
+      - "KAFKA_BOOTSTRAP_SERVERS=localhost:30882,localhost:30883"
+      - KAFKA_GROUP_ID=zipkin
+      - KAFKA_TOPIC=zipkin

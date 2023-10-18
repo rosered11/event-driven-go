@@ -35,6 +35,10 @@ spec:
             {{- toYaml .Values.securityContext | nindent 12 }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command:
+          - sh
+          - -c
+          - "rm -rf /tmp/kraft-combined-logs/lost+found && exec /etc/confluent/docker/run"
           envFrom:
             - configMapRef:
                 name: {{ include "kafka-broker.fullname" . }}

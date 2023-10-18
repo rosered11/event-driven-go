@@ -1,0 +1,81 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: prometheus-cluster
+  namespace: tms-sit
+spec:
+  selector:
+    app: prometheus-cluster
+  ports:
+  - name: internal
+    port: 9090
+    targetPort: 9090
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: prometheus
+  namespace: tms-sit
+spec:
+  serviceName: "prometheus-cluster"
+  selector:
+    matchLabels:
+      app: prometheus-cluster
+  template:
+    metadata:
+      labels:
+        app: prometheus-cluster
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: Nodepool
+                operator: In
+                values:
+                - stateful
+      tolerations:
+      - effect: NoSchedule
+        key: StatefulOnly
+        operator: Equal
+        value: "true"
+      containers:
+      - name: prometheus
+        image: prom/prometheus:v2.47.2
+        securityContext:
+            runAsUser: 0
+        ports:
+        - containerPort: 9090
+        args: 
+          - "--config.file=/run/secrets/prometheus.yml"
+          - "--storage.tsdb.path=/prometheus"
+          - "--storage.tsdb.retention.time=24h"
+        livenessProbe:
+          httpGet:
+            path: /metrics
+            port: 9090
+            scheme: HTTP
+          initialDelaySeconds: 30
+          timeoutSeconds: 30
+          periodSeconds: 60
+        readinessProbe:
+          httpGet:
+            path: /metrics
+            port: 9090
+            scheme: HTTP
+          initialDelaySeconds: 30
+          timeoutSeconds: 30
+          periodSeconds: 60
+        volumeMounts:
+          - name: prometheus-file
+            mountPath: /run/secrets
+          - mountPath: /prometheus
+            name: prometheus-data
+      volumes:
+        - name: prometheus-file
+          configMap:
+            name: prometheus-config
+        - name: prometheus-data
+          persistentVolumeClaim:
+            claimName: pv-claim-tms-sit
