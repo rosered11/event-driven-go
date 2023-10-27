@@ -121,6 +121,9 @@ consumer.config
 Convert file to secret
 `kubectl create secret generic my-secret --from-file=mysecretfile.txt=mysecretfile.txt`
 
+Convert file to configmap
+`kubectl create configmap my-configmap --from-file=myconfig.yml`
+
 ### Describe
 
 Check topic info
@@ -154,6 +157,14 @@ disk = 604800 * (5 * 3) * 2 = 18144000 bytes = 18.144 MB
 - ram 512 Mi
 - cpu 500m
 ```
+### Zipkin in Cassandra
+
+How to set TTL for logging in Cassandra
+```
+ALTER TABLE zipkin2.span
+WITH  default_time_to_live= 604800 # unit is seconds
+```
+
 
 Note Dev:
 Storage 4 Gi

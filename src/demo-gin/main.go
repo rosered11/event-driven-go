@@ -23,7 +23,7 @@ func main() {
 }
 
 func consumerLog(traceId, spanId string) {
-	kafkaBrokers := []string{"localhost:30881", "localhost:30882"} // Update with your Kafka brokers
+	kafkaBrokers := []string{"localhost:30882","localhost:30883"} // Update with your Kafka brokers
 	kafkaTopic := "zipkin"                                         // The Kafka topic to send traces to
 	kafkaReporter, err := kafka.NewReporter(
 		kafkaBrokers,
@@ -37,7 +37,7 @@ func consumerLog(traceId, spanId string) {
 	traceID, _ := model.TraceIDFromHex(traceId)
 	result, _ := strconv.ParseUint(spanId, 16, 64)
 	spanID := model.ID(result)
-	endpoint, _ := zipkin.NewEndpoint("consumption-service", "80")
+	endpoint, _ := zipkin.NewEndpoint("consumption-service", "0.0.0.0:80")
 	tracer, _ := zipkin.NewTracer(
 		kafkaReporter,
 		zipkin.WithLocalEndpoint(endpoint),
@@ -56,7 +56,7 @@ func consumerLog(traceId, spanId string) {
 
 func sendLog() (tracId, spanId string) {
 	// Configure Zipkin Kafka reporter
-	kafkaBrokers := []string{"localhost:30881", "localhost:30882"} // Update with your Kafka brokers
+	kafkaBrokers := []string{"localhost:30882","localhost:30883"} // Update with your Kafka brokers
 	kafkaTopic := "zipkin"                                         // The Kafka topic to send traces to
 
 	producerConfig := sarama.NewConfig()
@@ -74,9 +74,9 @@ func sendLog() (tracId, spanId string) {
 	defer kafkaReporter.Close()
 
 	// Create a Zipkin Tracer
-	endpoint, _ := zipkin.NewEndpoint("myservice3-service", "8099")
-	kafka, _ := zipkin.NewEndpoint("kafka-service", "5444")
-	redis, _ := zipkin.NewEndpoint("redis-service", "9092")
+	endpoint, _ := zipkin.NewEndpoint("myservice3-service", "0.0.0.0:8099")
+	kafka, _ := zipkin.NewEndpoint("kafka-service", "0.0.0.0:5444")
+	redis, _ := zipkin.NewEndpoint("redis-service", "0.0.0.0:9092")
 	tracer, err := zipkin.NewTracer(
 		kafkaReporter,
 		zipkin.WithLocalEndpoint(endpoint),

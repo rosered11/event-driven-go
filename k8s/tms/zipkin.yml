@@ -1,0 +1,137 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: zipkin-service
+  namespace: tms-sit
+spec:
+  selector:
+    app: zipkin-service
+  ports:
+  - name: zipkin
+    port: 9411
+    targetPort: 9411
+  - name: cassandra
+    port: 9042
+    targetPort: 9042
+  - name: jmx
+    port: 7072
+    targetPort: 7072
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: zipkin
+  namespace: tms-sit
+spec:
+  serviceName: "zipkin-service"
+  selector:
+    matchLabels:
+      app: zipkin-service
+  template:
+    metadata:
+      labels:
+        app: zipkin-service
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: Nodepool
+                operator: In
+                values:
+                - stateful
+      tolerations:
+      - effect: NoSchedule
+        key: StatefulOnly
+        operator: Equal
+        value: "true"
+      containers:
+      - name: cassandra
+        image: cassandra:3.11.16
+        env:
+          - name: JVM_OPTS
+            value: "-Xms512m -Xmx1024m -XX:+ExitOnOutOfMemoryError -javaagent:/usr/share/jmx_exporter/jar/jmx_prometheus_javaagent-0.19.0.jar=7072:/usr/share/jmx_exporter/cassandra.yml"
+        securityContext:
+            runAsUser: 0
+        ports:
+        - containerPort: 9042
+        - containerPort: 7072
+        # livenessProbe:
+        #   httpGet:
+        #     path: /health
+        #     port: 9411
+        #     scheme: HTTP
+        #   initialDelaySeconds: 30
+        #   timeoutSeconds: 30
+        #   periodSeconds: 60
+        # readinessProbe:
+        #   httpGet:
+        #     path: /health
+        #     port: 9411
+        #     scheme: HTTP
+        #   initialDelaySeconds: 30
+        #   timeoutSeconds: 30
+        #   periodSeconds: 60
+        resources:
+          limits:
+            cpu: 150m
+            memory: 1Gi
+          requests:
+            cpu: 50m
+            memory: 512Mi
+        volumeMounts:
+          - mountPath: /var/lib/cassandra
+            name: cassandra-data
+          - mountPath: /usr/share/jmx_exporter
+            name: cassandra-jmx
+          - mountPath: /usr/share/jmx_exporter/jar
+            name: javaagent
+      - name: zipkin
+        image: openzipkin/zipkin:2
+        env:
+          - name: JAVA_OPTS
+            value: "-Xms512m -Xmx512m -XX:+ExitOnOutOfMemoryError -Dlogging.level.zipkin=DEBUG -Dlogging.level.zipkin2=DEBUG"
+          - name: KAFKA_BOOTSTRAP_SERVERS
+            value: "kafka-broker-1:29092,kafka-broker-2:29092"
+          - name: STORAGE_TYPE
+            value: cassandra3
+          - name: CASSANDRA_CONTACT_POINTS
+            value: localhost:9042
+        securityContext:
+            runAsUser: 0
+        ports:
+        - containerPort: 9411
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 9411
+            scheme: HTTP
+          initialDelaySeconds: 30
+          timeoutSeconds: 30
+          periodSeconds: 60
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 9411
+            scheme: HTTP
+          initialDelaySeconds: 30
+          timeoutSeconds: 30
+          periodSeconds: 60
+        resources:
+          limits:
+            cpu: 150m
+            memory: 512Mi
+          requests:
+            cpu: 50m
+            memory: 256Mi
+      volumes:
+        - name: cassandra-data
+          persistentVolumeClaim:
+            claimName: pv-claim-tms-sit
+        - name: cassandra-jmx
+          configMap:
+            name: cassandra-jmx-file
+        - name: javaagent
+          configMap:
+            name: javaagent-file
