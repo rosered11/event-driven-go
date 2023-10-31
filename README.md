@@ -124,6 +124,43 @@ Convert file to secret
 Convert file to configmap
 `kubectl create configmap my-configmap --from-file=myconfig.yml`
 
+### Context View
+kubectl config view
+
+### Switch Context
+kubectl config use-context docker-desktop
+
+### Setup Access Cluster in Azure
+Warning or Error:
+The azure auth provider is already removed as of today which was earlier deprecated. kubelogin is now the default way. So you might get:
+
+WARNING: the azure auth plugin is deprecated 
+
+error: The azure auth plugin has been removed
+
+Fix:
+Below steps fixed the issue for me on windows:
+
+Remove all the config folders inside user folder viz., %USERPROFILE% which will be .kube, .azure-kubelogin.
+
+Then download and install the latest releases of kubectl and kubelogin (which is essentially just unzipping to a folder and adding that into user's Path environment variable.)
+
+Perform:
+
+```
+az login
+az account set --subscription <subscription id>
+az aks get-credentials --resource-group <resource group name> --name <AKS cluster name>
+kubelogin convert-kubeconfig -l azurecli
+Now try: kubectl get pods -A
+```
+
+### Command Forward port
+kubectl port-forward svc/my-service 6399:6379 -n default
+
+### Docker use Context Azure
+docker context create aci my-context
+
 ### Describe
 
 Check topic info

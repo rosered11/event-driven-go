@@ -1,0 +1,92 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: kibana-config
+  namespace: tms-sit
+data:
+  kibana.yml: |
+    server.host: 0.0.0.0
+    server.shutdownTimeout: 5s
+    elasticsearch.hosts: ['http://elastic-service:9200']
+    monitoring.ui.container.elasticsearch.enabled: true
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kibana-service
+  namespace: tms-sit
+spec:
+  selector:
+    app: kibana-service
+  ports:
+  - name: kibana
+    port: 5601
+    targetPort: 5601
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: kibana
+  namespace: tms-sit
+spec:
+  serviceName: "kibana-service"
+  selector:
+    matchLabels:
+      app: kibana-service
+  template:
+    metadata:
+      labels:
+        app: kibana-service
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: Nodepool
+                operator: In
+                values:
+                - stateful
+      tolerations:
+      - effect: NoSchedule
+        key: StatefulOnly
+        operator: Equal
+        value: "true"
+      containers:
+      - name: kibana
+        image: docker.elastic.co/kibana/kibana:8.10.4
+        env:
+        - name: ELASTICSEARCH_SERVICEACCOUNTTOKEN
+          value: AAEAAWVsYXN0aWMva2liYW5hL3Rva2VuMTowaF9IN1FVUlM2R3ExNk5JYTRWamhn
+        ports:
+        - containerPort: 5601
+        # livenessProbe:
+        #   httpGet:
+        #     path: /health
+        #     port: 9411
+        #     scheme: HTTP
+        #   initialDelaySeconds: 30
+        #   timeoutSeconds: 30
+        #   periodSeconds: 60
+        # readinessProbe:
+        #   httpGet:
+        #     path: /health
+        #     port: 9411
+        #     scheme: HTTP
+        #   initialDelaySeconds: 30
+        #   timeoutSeconds: 30
+        #   periodSeconds: 60
+        resources:
+          limits:
+            cpu: 259m
+            memory: 1Gi
+          requests:
+            cpu: 100m
+            memory: 512Mi
+        volumeMounts:
+          - name: kibana-file
+            mountPath: /usr/share/kibana/config
+      volumes:
+        - name: kibana-file
+          configMap:
+            name: kibana-config
