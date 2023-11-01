@@ -1,0 +1,176 @@
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: kafka-auth-pv
+spec:
+  capacity:
+    storage: 1Gi # Adjust the storage capacity as needed
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: k-local-storage # Name of the StorageClass
+  hostPath:
+    path: /run/desktop/mnt/host/e/workspace/event-driven-go/k8s/vol/persistent-k-auth-volumn # The path to the directory on the host where the data should be stored
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: kafka-auth-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi # Request the same storage capacity as the PV
+  storageClassName: k-local-storage # Match the StorageClass name
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: kafka-broker-1
+  labels:
+    helm.sh/chart: kafka-broker-0.1.0
+    app.kubernetes.io/name: kafka-broker-1
+    app.kubernetes.io/instance: release-name
+    app.kubernetes.io/version: "7.5.1"
+    app.kubernetes.io/managed-by: Helm
+data:
+  KAFKA_NODE_ID: "1"
+  KAFKA_LISTENERS: "CONTROLLER://:29093,LISTENER_CONTAINER://:29092,LISTENER_EXTERNAL://:30882"
+  KAFKA_CONTROLLER_LISTENER_NAMES: "CONTROLLER"
+  KAFKA_HEAP_OPTS: "-Xms1280M -Xmx1280M -XX:+ExitOnOutOfMemoryError"
+  KAFKA_ADVERTISED_LISTENERS: "LISTENER_CONTAINER://kafka-broker-1:29092,LISTENER_EXTERNAL://localhost:30882"
+  KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: "CONTROLLER:PLAINTEXT,LISTENER_CONTAINER:SASL_PLAINTEXT,LISTENER_EXTERNAL:SASL_PLAINTEXT"
+  KAFKA_INTER_BROKER_LISTENER_NAME: "LISTENER_CONTAINER"
+  KAFKA_CONTROLLER_QUORUM_VOTERS: "1@kafka-broker-1:29093"
+  KAFKA_PROCESS_ROLES: "broker,controller"
+  KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: "0"
+  KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: "1"
+  KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
+  CLUSTER_ID: "VE456PBZSdIPphrGgxGtaA=="
+  KAFKA_DEFAULT_REPLICATION_FACTOR: "1"
+  KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: "1"
+  KAFKA_OPTS: "-Djava.security.auth.login.config=/etc/kafka/kafka_server_jaas.conf"
+  KAFKA_LOG_DIRS: "/tmp/kraft-combined-logs"
+
+  KAFKA_SASL_ENABLED_MECHANISMS: PLAIN
+  KAFKA_SASL_MECHANISM_INTER_BROKER_PROTOCOL: PLAIN
+  # KAFKA_SECURITY_PROTOCOL: SASL_PLAINTEXT
+  # KAFKA_SUPER_USERS: kafka 
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kafka-broker-1
+  labels:
+    helm.sh/chart: kafka-broker-0.1.0
+    app.kubernetes.io/name: kafka-broker-1
+    app.kubernetes.io/instance: release-name
+    app.kubernetes.io/version: "7.5.1"
+    app.kubernetes.io/managed-by: Helm
+spec:
+  type: NodePort
+  ports:
+    - name: internal
+      port: 29092
+      targetPort: 29092
+    - name: controler
+      port: 29093
+      targetPort: 29093
+    # - name: jmx
+    #   port: 7072
+    #   targetPort: 7072
+    - name: client
+      port: 30882
+      targetPort: 30882
+      nodePort: 30882
+  selector:
+    app.kubernetes.io/name: kafka-broker-1
+    app.kubernetes.io/instance: release-name
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: kafka-broker-1
+  labels:
+    helm.sh/chart: kafka-broker-0.1.0
+    app.kubernetes.io/name: kafka-broker-1
+    app.kubernetes.io/instance: release-name
+    app.kubernetes.io/version: "7.5.1"
+    app.kubernetes.io/managed-by: Helm
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: kafka-broker-1
+      app.kubernetes.io/instance: release-name
+  template:
+    metadata:
+      labels:
+        helm.sh/chart: kafka-broker-0.1.0
+        app.kubernetes.io/name: kafka-broker-1
+        app.kubernetes.io/instance: release-name
+        app.kubernetes.io/version: "7.5.1"
+        app.kubernetes.io/managed-by: Helm
+    spec:
+      # affinity:
+      #   nodeAffinity:
+      #     requiredDuringSchedulingIgnoredDuringExecution:
+      #       nodeSelectorTerms:
+      #       - matchExpressions:
+      #         - key: Nodepool
+      #           operator: In
+      #           values:
+      #           - stateful
+      # tolerations:
+      # - effect: NoSchedule
+      #   key: StatefulOnly
+      #   operator: Equal
+      #   value: "true"
+      initContainers:
+      - name: file-permissions
+        image: busybox
+        command: ['chown', '-R', '1000:1000', '/etc/kafka/']
+        volumeMounts:
+        - mountPath: /etc/kafka
+          name: kafka-config
+        securityContext:
+          privileged: true
+          runAsUser: 0
+      containers:
+        - name: kafka-broker
+          image: "confluentinc/cp-kafka:7.5.1"
+          imagePullPolicy: Always
+          envFrom:
+            - configMapRef:
+                name: kafka-broker-1
+          resources:
+            limits:
+              cpu: 1
+              memory: 2Gi
+            requests:
+              cpu: 0.5
+              memory: 1Gi
+          ports:
+            - containerPort: 29092
+            - containerPort: 29093
+            - containerPort: 7072
+            - containerPort: 30882
+          volumeMounts:
+            - mountPath: "/etc/kafka"
+              name: kafka-config
+          #   - mountPath: /usr/share/jmx_exporter
+          #     name: kafka-jmx
+          #   - mountPath: /usr/share/jmx_exporter/jar
+          #     name: javaagent
+      volumes:
+        - name: kafka-config
+          persistentVolumeClaim:
+            claimName: kafka-auth-pvc
+      #   - name: kafka-jmx
+      #     configMap:
+      #       name: kafka-jmx-file
+      #   - name: javaagent
+      #     configMap:
+      #       name: javaagent-file
