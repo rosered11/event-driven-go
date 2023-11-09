@@ -99,6 +99,18 @@ Schema body data
 
 ## Kafka
 
+Generate config in linux
+
+```
+echo -e "security.protocol=SASL_PLAINTEXT\nsasl.mechanism=PLAIN\nsasl.jaas.config=org.apache.kafka.common.security.plain.PlainLoginModule required username=\"kafka\" password=\"kafka-secret\";" > kafka-config.properties
+```
+
+### Create topic
+
+```
+kafka-topics.sh --bootstrap-server localhost:9092 --topic first_topic --create --partitions 3 --replication-factor 1 --command-config config.properties
+```
+
 ### Consumer
 
 consume cli

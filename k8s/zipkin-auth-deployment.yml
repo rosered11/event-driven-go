@@ -1,0 +1,60 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: zipkin-config
+data:
+  kafka_client_jaas.conf: |
+    KafkaClient {
+      org.apache.kafka.common.security.plain.PlainLoginModule required
+      username="kafka"
+      password="kafka-secret";
+    };
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: zipkin-deployment
+  labels:
+    app: zipkin
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: zipkin
+  template:
+    metadata:
+      labels:
+        app: zipkin
+    spec:
+      containers:
+      - name: zipkin
+        image: rosered11/zipkin
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 9411
+        env:
+          - name: JAVA_OPTS
+            value: "-Xms512m -Xmx512m -XX:+ExitOnOutOfMemoryError -Dlogging.level.zipkin=DEBUG -Dlogging.level.zipkin2=DEBUG -Dzipkin.collector.kafka.overrides.sasl.mechanism=PLAIN -Dzipkin.collector.kafka.overrides.security.protocol=SASL_PLAINTEXT -Djava.security.auth.login.config=/etc/kafka/kafka_client_jaas.conf"
+          - name: KAFKA_BOOTSTRAP_SERVERS
+            value: "kafka-broker-1:29092"
+        volumeMounts:
+          - name: zipkin-config-file
+            mountPath: /etc/kafka
+      volumes:
+        - name: zipkin-config-file
+          configMap:
+            name: zipkin-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: zipkin-service
+spec:
+  type: NodePort
+  selector:
+    app: zipkin
+  ports:
+    - protocol: TCP
+      port: 9411
+      targetPort: 9411
+      nodePort: 30891
