@@ -1,0 +1,28 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: kafka-cli
+  labels:
+    purpose: kafka-cli
+  namespace: fms-dev
+spec:
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+        - matchExpressions:
+          - key: Nodepool
+            operator: In
+            values:
+            - stateless
+  tolerations:
+  - effect: NoSchedule
+    key: StatelessOnly
+    operator: Equal
+    value: "true"
+  containers:
+    - name: kafka-cli
+      image: conitasgmbh/kafka-cli
+      command: ["/bin/sh"]
+      args: ["-c", "while true; do sleep 3600; done"]
+  restartPolicy: OnFailure

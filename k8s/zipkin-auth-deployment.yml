@@ -10,6 +10,55 @@ data:
       password="kafka-secret";
     };
 ---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nginx-config
+data:
+  default.conf: |
+    server {
+        listen       80;
+        listen  [::]:80;
+        server_name  localhost;
+
+          proxy_set_header Host $host;
+          proxy_set_header X-Real-IP $remote_addr;
+          proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+
+        location /zipkin {
+          proxy_pass http://localhost:9411;
+
+          auth_basic           "Administrator’s Area";
+          auth_basic_user_file /etc/apache2/.htpasswd;
+        }
+
+        location / {
+            root   /usr/share/nginx/html;
+            index  index.html index.htm;
+        }
+
+        error_page   500 502 503 504  /50x.html;
+        location = /50x.html {
+            root   /usr/share/nginx/html;
+        }
+    }
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nginx-user-config
+data:
+  .htpasswd: |
+    zipkin:$apr1$RYirRexG$s/Bn4AC.7vkJy0Syhq4FG0
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nginx-index-config
+data:
+  index.html: |
+    Health
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -27,6 +76,29 @@ spec:
         app: zipkin
     spec:
       containers:
+      - name: nginx
+        image: nginx:1.24.0
+        ports:
+        - containerPort: 9412
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 80
+            scheme: HTTP
+          initialDelaySeconds: 5
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 80
+            scheme: HTTP
+          initialDelaySeconds: 5
+        volumeMounts:
+          - name: nginx-config-file
+            mountPath: /etc/nginx/conf.d
+          - name: nginx-user-config-file
+            mountPath: /etc/apache2
+          - name: nginx-index-config-file
+            mountPath: /usr/share/nginx/html
       - name: zipkin
         image: rosered11/zipkin
         imagePullPolicy: IfNotPresent
@@ -37,13 +109,66 @@ spec:
             value: "-Xms512m -Xmx512m -XX:+ExitOnOutOfMemoryError -Dlogging.level.zipkin=DEBUG -Dlogging.level.zipkin2=DEBUG -Dzipkin.collector.kafka.overrides.sasl.mechanism=PLAIN -Dzipkin.collector.kafka.overrides.security.protocol=SASL_PLAINTEXT -Djava.security.auth.login.config=/etc/kafka/kafka_client_jaas.conf"
           - name: KAFKA_BOOTSTRAP_SERVERS
             value: "kafka-broker-1:29092"
+          - name: STORAGE_TYPE
+            value: cassandra3
+          - name: CASSANDRA_CONTACT_POINTS
+            value: localhost:9042
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 9411
+            scheme: HTTP
+          initialDelaySeconds: 30
+          # timeoutSeconds: 30
+          # periodSeconds: 60
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 9411
+            scheme: HTTP
+          initialDelaySeconds: 30
+          # timeoutSeconds: 30
+          # periodSeconds: 60
         volumeMounts:
           - name: zipkin-config-file
             mountPath: /etc/kafka
+      - name: cassandra
+        image: cassandra:3.11.16
+        env:
+          - name: JVM_OPTS
+            value: "-Xms512m -Xmx1024m -XX:+ExitOnOutOfMemoryError"
+        ports:
+        - containerPort: 9042
+        - containerPort: 7072
+        readinessProbe:
+          exec:
+            command:
+            - /bin/sh
+            - -c
+            - "cqlsh -e 'SELECT * FROM system_schema.keyspaces;'"
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        livenessProbe:
+          exec:
+            command:
+            - /bin/sh
+            - -c
+            - "cqlsh -e 'SELECT * FROM system_schema.keyspaces;'"
+          initialDelaySeconds: 60
+          periodSeconds: 20
       volumes:
         - name: zipkin-config-file
           configMap:
             name: zipkin-config
+        - name: nginx-config-file
+          configMap:
+            name: nginx-config
+        - name: nginx-user-config-file
+          configMap:
+            name: nginx-user-config
+        - name: nginx-index-config-file
+          configMap:
+            name: nginx-index-config
 ---
 apiVersion: v1
 kind: Service
@@ -54,7 +179,11 @@ spec:
   selector:
     app: zipkin
   ports:
-    - protocol: TCP
-      port: 9411
-      targetPort: 9411
+    - name: zipkin
+      port: 80
+      targetPort: 80
       nodePort: 30891
+    - name: cassandra
+      port: 9042
+      targetPort: 9042
+      nodePort: 30892

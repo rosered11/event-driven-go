@@ -27,6 +27,20 @@ spec:
 apiVersion: v1
 kind: ConfigMap
 metadata:
+  name: kafka-config
+data:
+  kafka_server_jaas.conf: |
+    KafkaServer {
+      org.apache.kafka.common.security.plain.PlainLoginModule required
+      user_kafka="kafka-secret"
+
+      username="kafka"
+      password="kafka-secret";
+    };
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
   name: kafka-broker-1
   labels:
     helm.sh/chart: kafka-broker-0.1.0
@@ -131,10 +145,10 @@ spec:
       initContainers:
       - name: file-permissions
         image: busybox
-        command: ['chown', '-R', '1000:1000', '/etc/kafka/']
+        command: ['chown', '-R', '1000:1000', '/tmp/kraft-combined-logs/']
         volumeMounts:
-        - mountPath: /etc/kafka
-          name: kafka-config
+        - mountPath: /tmp/kraft-combined-logs
+          name: kafka-data
         securityContext:
           privileged: true
           runAsUser: 0
@@ -158,16 +172,22 @@ spec:
             - containerPort: 7072
             - containerPort: 30882
           volumeMounts:
-            - mountPath: "/etc/kafka"
-              name: kafka-config
+            - mountPath: "/etc/kafka/kafka_server_jaas.conf"
+              name: kafka-config-file
+              subPath: kafka_server_jaas.conf
+            - mountPath: "/tmp/kraft-combined-logs"
+              name: kafka-data
           #   - mountPath: /usr/share/jmx_exporter
           #     name: kafka-jmx
           #   - mountPath: /usr/share/jmx_exporter/jar
           #     name: javaagent
       volumes:
-        - name: kafka-config
+        - name: kafka-data
           persistentVolumeClaim:
             claimName: kafka-auth-pvc
+        - name: kafka-config-file
+          configMap:
+            name: kafka-config
       #   - name: kafka-jmx
       #     configMap:
       #       name: kafka-jmx-file
