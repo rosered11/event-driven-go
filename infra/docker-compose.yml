@@ -1,0 +1,13 @@
+version: '3.8'
+services:
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-CU9-ubuntu-20.04
+    # user: root
+    # restart: always
+    ports:
+      - 1433:1433
+    volumes:
+      - "./vol/sqlserver/data:/var/opt/mssql/data"
+    environment:
+      - ACCEPT_EULA=Y
+      - MSSQL_SA_PASSWORD=p@ssw0rd2
