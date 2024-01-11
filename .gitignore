@@ -22,3 +22,4 @@ go.work
 k8s/vol/elasticsearch
 **/*.DS_Store
 k8s/vol/persistent*
+infra/vol

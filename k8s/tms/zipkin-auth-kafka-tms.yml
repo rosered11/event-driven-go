@@ -1,0 +1,137 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: zipkin-tms-config
+  namespace: tms-sit
+data:
+  kafka_client_jaas.conf: |
+    KafkaClient {
+      org.apache.kafka.common.security.scram.ScramLoginModule required
+      username="{}"
+      password="{}";
+    };
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: zipkin-tms-service
+  namespace: tms-sit
+spec:
+  selector:
+    app: zipkin-tms-service
+  ports:
+  - name: zipkin
+    port: 9412
+    targetPort: 9412
+  - name: cassandra
+    port: 9042
+    targetPort: 9042
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: zipkin-tms
+  namespace: tms-sit
+spec:
+  serviceName: "zipkin-tms-service"
+  selector:
+    matchLabels:
+      app: zipkin-tms-service
+  template:
+    metadata:
+      labels:
+        app: zipkin-tms-service
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: Nodepool
+                operator: In
+                values:
+                - stateful
+      tolerations:
+      - effect: NoSchedule
+        key: StatefulOnly
+        operator: Equal
+        value: "true"
+      containers:
+      - name: nginx
+        image: nginx:1.24.0
+        ports:
+        - containerPort: 9412
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 9412
+            scheme: HTTP
+          initialDelaySeconds: 5
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 9412
+            scheme: HTTP
+          initialDelaySeconds: 5
+        volumeMounts:
+          - name: nginx-config-file
+            mountPath: /etc/nginx/conf.d
+          - name: nginx-user-config-file
+            mountPath: /etc/apache2
+          - name: nginx-index-config-file
+            mountPath: /usr/share/nginx/html
+        resources:
+          limits:
+            cpu: 500m
+            memory: 2Gi
+          requests:
+            cpu: 250m
+            memory: 1Gi
+      - name: zipkin
+        image: rosered/zipkin
+        env:
+          - name: JAVA_OPTS
+            value: "-Xms512m -Xmx512m -XX:+ExitOnOutOfMemoryError -Dlogging.level.zipkin=DEBUG -Dlogging.level.zipkin2=DEBUG -Dzipkin.collector.kafka.overrides.sasl.mechanism=SCRAM-SHA-512 -Dzipkin.collector.kafka.overrides.security.protocol=SASL_PLAINTEXT -Djava.security.auth.login.config=/etc/kafka/kafka_client_jaas.conf"
+          - name: KAFKA_BOOTSTRAP_SERVERS
+            value: "{}"
+          - name: KAFKA_GROUP_ID
+            value: "{}"
+          - name: KAFKA_TOPIC
+            value: "{}"
+          # - name: STORAGE_TYPE
+          #   value: cassandra3
+          # - name: CASSANDRA_CONTACT_POINTS
+          #   value: localhost:9042
+          # - name: CASSANDRA_KEYSPACE
+          #   value: zipkintms
+        ports:
+        - containerPort: 9411
+        resources:
+          limits:
+            cpu: 150m
+            memory: 512Mi
+          requests:
+            cpu: 50m
+            memory: 256Mi
+        volumeMounts:
+          - name: zipkin-config-file
+            mountPath: /etc/kafka
+      volumes:
+        - name: zipkin-config-file
+          configMap:
+            name: zipkin-tms-config
+        - name: nginx-config-file
+          configMap:
+            name: nginx-config
+        - name: nginx-user-config-file
+          configMap:
+            name: nginx-user-config
+        - name: nginx-index-config-file
+          configMap:
+            name: nginx-index-config
+      #   - name: cassandra-jmx
+      #     configMap:
+      #       name: cassandra-jmx-file
+      #   - name: javaagent
+      #     configMap:
+      #       name: javaagent-file

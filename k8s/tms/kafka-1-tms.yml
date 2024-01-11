@@ -41,59 +41,59 @@ spec:
       containers:
         - name: kafka-broker
           image: "confluentinc/cp-kafka:7.5.1"
-          command:
-          - sh
-          - -c
-          - "rm -rf /tmp/kraft-combined-logs/png && rm -rf /tmp/kraft-combined-logs/alerting && exec /etc/confluent/docker/run"
+          # command:
+          # - sh
+          # - -c
+          # - "rm -rf /tmp/kraft-combined-logs/png && rm -rf /tmp/kraft-combined-logs/alerting && exec /etc/confluent/docker/run"
           
           imagePullPolicy: Always
-          securityContext:
-            runAsUser: 0
+          # securityContext:
+          #   runAsUser: 0
           envFrom:
             - configMapRef:
                 name: kafka-broker-1
-          livenessProbe:
-            httpGet:
-              path: /metrics
-              port: 7072
-              scheme: HTTP
-            initialDelaySeconds: 30
-            timeoutSeconds: 30
-            periodSeconds: 60
-          readinessProbe:
-            httpGet:
-              path: /metrics
-              port: 7072
-              scheme: HTTP
-            initialDelaySeconds: 30
-            timeoutSeconds: 30
-            periodSeconds: 60
+          # livenessProbe:
+          #   httpGet:
+          #     path: /metrics
+          #     port: 7072
+          #     scheme: HTTP
+          #   initialDelaySeconds: 30
+          #   timeoutSeconds: 30
+          #   periodSeconds: 60
+          # readinessProbe:
+          #   httpGet:
+          #     path: /metrics
+          #     port: 7072
+          #     scheme: HTTP
+          #   initialDelaySeconds: 30
+          #   timeoutSeconds: 30
+          #   periodSeconds: 60
           resources:
             limits:
-              cpu: 500m
+              cpu: 1
               memory: 2Gi
             requests:
-              cpu: 50m
+              cpu: 0.5
               memory: 1Gi
           ports:
             - containerPort: 29092
             - containerPort: 29093
             - containerPort: 7072
             - containerPort: 30882
-          volumeMounts:
-            - mountPath: "/tmp/kraft-combined-logs"
-              name: kafka-data
-            - mountPath: /usr/share/jmx_exporter
-              name: kafka-jmx
-            - mountPath: /usr/share/jmx_exporter/jar
-              name: javaagent
-      volumes:
-        - name: kafka-data
-          persistentVolumeClaim:
-            claimName: pv-claim-tms-sit
-        - name: kafka-jmx
-          configMap:
-            name: kafka-jmx-file
-        - name: javaagent
-          configMap:
-            name: javaagent-file
+          # volumeMounts:
+          #   - mountPath: "/tmp/kraft-combined-logs"
+          #     name: kafka-data
+          #   - mountPath: /usr/share/jmx_exporter
+          #     name: kafka-jmx
+          #   - mountPath: /usr/share/jmx_exporter/jar
+          #     name: javaagent
+      # volumes:
+      #   - name: kafka-data
+      #     persistentVolumeClaim:
+      #       claimName: pv-claim-tms-sit
+      #   - name: kafka-jmx
+      #     configMap:
+      #       name: kafka-jmx-file
+      #   - name: javaagent
+      #     configMap:
+      #       name: javaagent-file

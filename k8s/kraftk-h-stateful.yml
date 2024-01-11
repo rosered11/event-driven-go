@@ -10,7 +10,7 @@ spec:
   persistentVolumeReclaimPolicy: Retain
   storageClassName: k-h-storage # Name of the StorageClass
   hostPath:
-    path: /Users/rosered/Documents/workspace/event-driven-go/k8s/vol/persistent-k-h-volumn # The path to the directory on the host where the data should be stored
+    path: /run/desktop/mnt/host/e/workspace/event-driven-go/k8s/vol/persistent-k-h-volumn # The path to the directory on the host where the data should be stored
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
