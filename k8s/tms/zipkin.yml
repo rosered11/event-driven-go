@@ -47,6 +47,29 @@ spec:
         operator: Equal
         value: "true"
       containers:
+      - name: nginx
+        image: nginx:1.24.0
+        ports:
+        - containerPort: 9412
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 80
+            scheme: HTTP
+          initialDelaySeconds: 5
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 80
+            scheme: HTTP
+          initialDelaySeconds: 5
+        volumeMounts:
+          - name: nginx-config-file
+            mountPath: /etc/nginx/conf.d
+          - name: nginx-user-config-file
+            mountPath: /etc/apache2
+          - name: nginx-index-config-file
+            mountPath: /usr/share/nginx/html
       - name: cassandra
         image: cassandra:3.11.16
         env:

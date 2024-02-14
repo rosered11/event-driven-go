@@ -1,0 +1,28 @@
+resources:
+  limits:
+    memory: 4Gi
+# ingress:
+#   annotations:
+#     kubernetes.io/ingress.class: nginx
+
+# ui:
+#   ingress:
+#     enabled: true
+#     path: /
+#     hosts:
+#       - seq.mydomain.com
+
+
+# ingestion:
+#   ingress:
+#     enabled: true
+#     path: /
+#     hosts:
+#       - ingestion.seq.mydomain.com
+persistence:
+  enabled: false
+#   storageClass: managed-premium
+
+firstRunAdminUsername: "admin"
+
+firstRunAdminPasswordHash: "QDkigRY02QidLajAWjNvhQTfl333U6RDPk9pQEdFNnYxYPGsO5eddUyTOj9DSevjR/FGbwkZcdGvZ+2r4UGBPhUoigVEIYtFDjG2SIbsINiW"
