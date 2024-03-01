@@ -1,0 +1,228 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: zipkin-config
+  namespace: tms-dev
+data:
+  kafka_client_jaas.conf: |
+    KafkaClient {
+      org.apache.kafka.common.security.plain.PlainLoginModule required
+      username="kafka"
+      password="kafka-secret";
+    };
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nginx-config
+  namespace: tms-dev
+data:
+  default.conf: |
+    server {
+        listen       9412;
+        listen  [::]:9412;
+        server_name  localhost;
+
+          proxy_set_header Host $host;
+          proxy_set_header X-Real-IP $remote_addr;
+          proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+
+        location /zipkin {
+          proxy_pass http://localhost:9411;
+
+          auth_basic           "Administrator’s Area";
+          auth_basic_user_file /etc/apache2/.htpasswd;
+        }
+
+        location / {
+            root   /usr/share/nginx/html;
+            index  index.html index.htm;
+        }
+
+        error_page   500 502 503 504  /50x.html;
+        location = /50x.html {
+            root   /usr/share/nginx/html;
+        }
+    }
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nginx-user-config
+  namespace: tms-dev
+data:
+  .htpasswd: |
+    zipkin:$apr1$RYirRexG$s/Bn4AC.7vkJy0Syhq4FG0
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nginx-index-config
+  namespace: tms-dev
+data:
+  index.html: |
+    Health
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: zipkin-service
+  namespace: tms-dev
+spec:
+  selector:
+    app: zipkin-service
+  ports:
+  - name: zipkin
+    port: 9412
+    targetPort: 9412
+  - name: cassandra
+    port: 9042
+    targetPort: 9042
+  # - name: jmx
+  #   port: 7072
+  #   targetPort: 7072
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: zipkin
+  namespace: tms-dev
+spec:
+  serviceName: "zipkin-service"
+  selector:
+    matchLabels:
+      app: zipkin-service
+  template:
+    metadata:
+      labels:
+        app: zipkin-service
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: Nodepool
+                operator: In
+                values:
+                - stateful
+      tolerations:
+      - effect: NoSchedule
+        key: StatefulOnly
+        operator: Equal
+        value: "true"
+      containers:
+      - name: nginx
+        image: nginx:1.24.0
+        ports:
+        - containerPort: 9412
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 9412
+            scheme: HTTP
+          initialDelaySeconds: 5
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 9412
+            scheme: HTTP
+          initialDelaySeconds: 5
+        volumeMounts:
+          - name: nginx-config-file
+            mountPath: /etc/nginx/conf.d
+          - name: nginx-user-config-file
+            mountPath: /etc/apache2
+          - name: nginx-index-config-file
+            mountPath: /usr/share/nginx/html
+      - name: cassandra
+        image: cassandra:3.11.16
+        env:
+          - name: JVM_OPTS
+            value: "-Xms1024m -Xmx2048m -XX:+ExitOnOutOfMemoryError"
+        ports:
+        - containerPort: 9042
+        - containerPort: 7072
+        # readinessProbe:
+        #   exec:
+        #     command:
+        #     - /bin/sh
+        #     - -c
+        #     - "cqlsh -e 'SELECT * FROM system_schema.keyspaces;'"
+        #   initialDelaySeconds: 30
+        #   periodSeconds: 10
+        # livenessProbe:
+        #   exec:
+        #     command:
+        #     - /bin/sh
+        #     - -c
+        #     - "cqlsh -e 'SELECT * FROM system_schema.keyspaces;'"
+        #   initialDelaySeconds: 60
+        #   periodSeconds: 20
+        resources:
+          limits:
+            cpu: 500m
+            memory: 2Gi
+          requests:
+            cpu: 250m
+            memory: 1Gi
+        volumeMounts:
+          - mountPath: /var/lib/cassandra
+            name: cassandra-data
+      - name: zipkin
+        image: rosered/zipkin
+        env:
+          - name: JAVA_OPTS
+            value: "-Xms512m -Xmx512m -XX:+ExitOnOutOfMemoryError -Dlogging.level.zipkin=DEBUG -Dlogging.level.zipkin2=DEBUG -Dzipkin.collector.kafka.overrides.sasl.mechanism=PLAIN -Dzipkin.collector.kafka.overrides.security.protocol=SASL_PLAINTEXT -Djava.security.auth.login.config=/etc/kafka/kafka_client_jaas.conf"
+          - name: KAFKA_BOOTSTRAP_SERVERS
+            value: "kafka-broker-1:29092"
+          - name: STORAGE_TYPE
+            value: cassandra3
+          - name: CASSANDRA_CONTACT_POINTS
+            value: localhost:9042
+        ports:
+        - containerPort: 9411
+        # livenessProbe:
+        #   httpGet:
+        #     path: /health
+        #     port: 9411
+        #     scheme: HTTP
+        #   initialDelaySeconds: 30
+        # readinessProbe:
+        #   httpGet:
+        #     path: /health
+        #     port: 9411
+        #     scheme: HTTP
+        #   initialDelaySeconds: 30
+        resources:
+          limits:
+            cpu: 150m
+            memory: 512Mi
+          requests:
+            cpu: 50m
+            memory: 256Mi
+        volumeMounts:
+          - name: zipkin-config-file
+            mountPath: /etc/kafka
+      volumes:
+        - name: cassandra-data
+          persistentVolumeClaim:
+            claimName: pv-claim-tms-dev
+        - name: zipkin-config-file
+          configMap:
+            name: zipkin-config
+        - name: nginx-config-file
+          configMap:
+            name: nginx-config
+        - name: nginx-user-config-file
+          configMap:
+            name: nginx-user-config
+        - name: nginx-index-config-file
+          configMap:
+            name: nginx-index-config
+      #   - name: cassandra-jmx
+      #     configMap:
+      #       name: cassandra-jmx-file
+      #   - name: javaagent
+      #     configMap:
+      #       name: javaagent-file

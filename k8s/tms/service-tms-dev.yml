@@ -8,13 +8,16 @@ metadata:
     app.kubernetes.io/instance: release-name
     app.kubernetes.io/version: "7.5.1"
     app.kubernetes.io/managed-by: Helm
-  namespace: tms-sit
+  namespace: tms-dev
 spec:
   type: ClusterIP
   ports:
     - name: internal
       port: 29092
       targetPort: 29092
+    - name: internalext
+      port: 29094
+      targetPort: 29094
     - name: controler
       port: 29093
       targetPort: 29093
