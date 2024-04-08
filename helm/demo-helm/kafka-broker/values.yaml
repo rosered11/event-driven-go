@@ -7,7 +7,7 @@
 # - QuarumVoters
 # - External Port and Url in Kafka
 
-namespace: "default"
+namespace: "tms-sit"
 
 replicaCount: 1
 
@@ -48,9 +48,9 @@ securityContext:
   # runAsUser: 1000
 
 service:
-  type: NodePort
+  type: ClusterIP
   port: 29092
-  nodePort: 30882
+  # nodePort: 30882
 
 ingress:
   enabled: false
@@ -126,6 +126,6 @@ kafka:
   memory: "-Xms1280M -Xmx1280M -XX:+ExitOnOutOfMemoryError"
 
 pv:
-  storage: "1Gi"
+  storage: "4Gi"
   accessMode: "ReadWriteOnce"
   storageClaimName: "kafka-broker-1"

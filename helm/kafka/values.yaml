@@ -1,0 +1,27 @@
+externalAccess:
+  enabled: true
+  # autoDiscovery:
+  #   enabled: true
+  # serviceAccount:
+  #   create: true
+  controller:
+    service:
+      type: LoadBalancer
+      # domain: 127.0.0.1
+      # externalIPs: [localhost,localhost,localhost]
+      # nodePorts:
+      #   - 30081
+      #   - 30082
+      #   - 30083
+  broker:
+    service:
+      type: LoadBalancer
+      # domain: 127.0.0.1
+# rbac:
+#   create: true
+# broker:
+#   automountServiceAccountToken: true
+# controller:
+#   automountServiceAccountToken: true
+# listeners:
+#   advertisedListeners: ""

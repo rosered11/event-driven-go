@@ -1,0 +1,53 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  # Replace with a descriptive name
+  name: kafka-ingress
+
+# Assuming the ingress controller is in the "ingress-nginx" namespace
+spec:
+#my-kafka-controller-0.my-kafka-controller-headless.default.svc.cluster.local
+#my-kafka-controller-0.my-kafka-controller-headless.default.svc.cluster.local
+  rules:
+  - http:
+    # You can define a hostname here (e.g., kafka.yourdomain.com)
+    # If omitted, any hostname will match
+    # host: kafka.yourdomain.com
+    paths:
+    - pathType: Prefix
+      # Adjust path based on your specific needs
+      path: /kafka/
+      backend:
+        service:
+          # Replace with the actual service name for Kafka brokers (likely determined by common.names.fullname)
+          name: my-kafka-controller-0-external
+          port:
+            number: 9094
+  - http:
+    # You can define a hostname here (e.g., kafka.yourdomain.com)
+    # If omitted, any hostname will match
+    # host: kafka.yourdomain.com
+    paths:
+    - pathType: Prefix
+      # Adjust path based on your specific needs
+      path: /kafka/
+      backend:
+        service:
+          # Replace with the actual service name for Kafka brokers (likely determined by common.names.fullname)
+          name: kafka-headless-1
+          port:
+            number: 9095
+  - http:
+    # You can define a hostname here (e.g., kafka.yourdomain.com)
+    # If omitted, any hostname will match
+    # host: kafka.yourdomain.com
+    paths:
+    - pathType: Prefix
+      # Adjust path based on your specific needs
+      path: /kafka/
+      backend:
+        service:
+          # Replace with the actual service name for Kafka brokers (likely determined by common.names.fullname)
+          name: kafka-headless-2
+          port:
+            number: 9096

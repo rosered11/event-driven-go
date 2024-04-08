@@ -27,7 +27,7 @@ Need to create user in Elasticsearch for Logstash for create data to indict in E
 
 ## Zipkin
 
-Schema body data 
+Schema body data
 ```json
 [
     {
@@ -102,7 +102,7 @@ Schema body data
 Generate config in linux
 
 ```
-echo -e "security.protocol=SASL_PLAINTEXT\nsasl.mechanism=PLAIN\nsasl.jaas.config=org.apache.kafka.common.security.plain.PlainLoginModule required username=\"kafka\" password=\"kafka-secret\";" > kafka-config.properties
+echo -e "security.protocol=SASL_PLAINTEXT\nsasl.mechanism=PLAIN\nsasl.jaas.config=org.apache.kafka.common.security.scram.ScramLoginModule required username=\"user1\" password=\"GaferjmEV1%\";" > kafka-config.properties
 ```
 
 ### Create topic
@@ -120,6 +120,11 @@ consumer.config
 `
 
 `
+
+### Producer
+
+producer cli
+`kafka-console-producer.sh --broker-list 192.168.65.3:31363,192.168.65.3:30307,192.168.65.3:30513 --topic test`
 
 ## Grafana
 
@@ -146,7 +151,7 @@ kubectl config use-context docker-desktop
 Warning or Error:
 The azure auth provider is already removed as of today which was earlier deprecated. kubelogin is now the default way. So you might get:
 
-WARNING: the azure auth plugin is deprecated 
+WARNING: the azure auth plugin is deprecated
 
 error: The azure auth plugin has been removed
 
