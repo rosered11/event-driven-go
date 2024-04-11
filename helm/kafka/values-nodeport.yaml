@@ -1,0 +1,24 @@
+externalAccess:
+  enabled: true
+  autoDiscovery:
+    enabled: true
+  controller:
+    service:
+      type: NodePort
+      # containerPorts:
+      #   external: 9094
+  broker:
+    service:
+      # ports:
+      #   external: 9094
+      type: NodePort
+serviceAccount:
+  create: true
+rbac:
+  create: true
+# broker:
+#   automountServiceAccountToken: true
+controller:
+  automountServiceAccountToken: true
+# listeners:
+#   advertisedListeners: ""
