@@ -1,8 +1,49 @@
+replicaCount: 1
 sasl:
   client:
     users:
-      - myuser1
-      - myuser2
+      - kafka
     passwords:
-      - mypass1
-      - mypass2
+      - kafka_ssl
+controller:
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+        - matchExpressions:
+          - key: Nodepool
+            operator: In
+            values:
+            - stateful
+  tolerations:
+    - effect: NoSchedule
+      key: StatefulOnly
+      operator: Equal
+      value: "true"
+  persistence:
+    enabled: false
+
+broker:
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+        - matchExpressions:
+          - key: Nodepool
+            operator: In
+            values:
+            - stateful
+  tolerations:
+    - effect: NoSchedule
+      key: StatefulOnly
+      operator: Equal
+      value: "true"
+  persistence:
+    enabled: false
+networkPolicy:
+  enabled: false
+serviceAccount:
+  create: false
+provisioning:
+  serviceAccount:
+    create: false
